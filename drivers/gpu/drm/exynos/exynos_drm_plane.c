@@ -72,7 +72,8 @@ int exynos_plane_mode_set(struct drm_plane *plane, struct drm_crtc *crtc,
 			  struct drm_framebuffer *fb, int crtc_x, int crtc_y,
 			  unsigned int crtc_w, unsigned int crtc_h,
 			  uint32_t src_x, uint32_t src_y,
-			  uint32_t src_w, uint32_t src_h)
+			  uint32_t src_w, uint32_t src_h,
+			  uint32_t underscan_hborder, uint32_t underscan_vborder)
 {
 	struct exynos_plane *exynos_plane = to_exynos_plane(plane);
 	struct exynos_drm_overlay *overlay = &exynos_plane->overlay;
@@ -136,6 +137,9 @@ int exynos_plane_mode_set(struct drm_plane *plane, struct drm_crtc *crtc,
 	overlay->refresh = crtc->mode.vrefresh;
 	overlay->scan_flag = crtc->mode.flags;
 
+	overlay->underscan_hborder = underscan_hborder;
+	overlay->underscan_vborder = underscan_vborder;
+
 	DRM_DEBUG_KMS("overlay : offset_x/y(%d,%d), width/height(%d,%d)",
 			overlay->crtc_x, overlay->crtc_y,
 			overlay->crtc_width, overlay->crtc_height);
@@ -193,7 +197,7 @@ exynos_update_plane(struct drm_plane *plane, struct drm_crtc *crtc,
 
 	ret = exynos_plane_mode_set(plane, crtc, fb, crtc_x, crtc_y,
 			crtc_w, crtc_h, src_x >> 16, src_y >> 16,
-			src_w >> 16, src_h >> 16);
+			src_w >> 16, src_h >> 16, 0, 0);
 	if (ret < 0)
 		return ret;
 

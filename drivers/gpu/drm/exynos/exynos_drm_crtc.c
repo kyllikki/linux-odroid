@@ -18,6 +18,7 @@
 #include "exynos_drm_drv.h"
 #include "exynos_drm_encoder.h"
 #include "exynos_drm_plane.h"
+#include "exynos_drm_connector.h"
 
 #define to_exynos_crtc(x)	container_of(x, struct exynos_drm_crtc,\
 				drm_crtc)
@@ -110,12 +111,38 @@ exynos_drm_crtc_mode_set(struct drm_crtc *crtc, struct drm_display_mode *mode,
 {
 	struct exynos_drm_crtc *exynos_crtc = to_exynos_crtc(crtc);
 	struct drm_plane *plane = exynos_crtc->plane;
+	struct drm_device *dev = crtc->dev;
+	struct drm_connector *connector;
 	unsigned int crtc_w;
 	unsigned int crtc_h;
+	uint32_t src_w;
+	uint32_t src_h;
 	int pipe = exynos_crtc->pipe;
+	enum exynos_underscan_type underscan = UNDERSCAN_OFF;
+	u32 underscan_hborder = 0;
+	u32 underscan_vborder = 0;
+	int found_connector = false;
 	int ret;
 
 	DRM_DEBUG_KMS("%s\n", __FILE__);
+
+	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
+		if (connector->encoder && connector->encoder->crtc == crtc) {
+		        found_connector = true;
+			break;
+		}
+	}
+
+	if (found_connector)
+	        exynos_drm_connector_copy_underscan_properties(connector,
+		        &underscan, &underscan_hborder,
+		        &underscan_vborder);
+
+	if (underscan == UNDERSCAN_OFF)
+		underscan_hborder = underscan_vborder = 0;
+
+	printk(KERN_ERR "%s: underscan %d %ux%u\n", __func__, underscan, underscan_hborder,
+		        underscan_vborder);
 
 	/*
 	 * copy the mode data adjusted by mode_fixup() into crtc->mode
@@ -126,8 +153,12 @@ exynos_drm_crtc_mode_set(struct drm_crtc *crtc, struct drm_display_mode *mode,
 	crtc_w = crtc->fb->width - x;
 	crtc_h = crtc->fb->height - y;
 
+	src_w = crtc_w;
+	src_h = crtc_h;
+
 	ret = exynos_plane_mode_set(plane, crtc, crtc->fb, 0, 0, crtc_w, crtc_h,
-				    x, y, crtc_w, crtc_h);
+				    x, y, src_w, src_h, underscan_hborder,
+				    underscan_vborder);
 	if (ret)
 		return ret;
 
@@ -144,11 +175,35 @@ static int exynos_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 {
 	struct exynos_drm_crtc *exynos_crtc = to_exynos_crtc(crtc);
 	struct drm_plane *plane = exynos_crtc->plane;
+	struct drm_device *dev = crtc->dev;
+	struct drm_connector *connector;
 	unsigned int crtc_w;
 	unsigned int crtc_h;
 	int ret;
+	enum exynos_underscan_type underscan = UNDERSCAN_OFF;
+	u32 underscan_hborder = 0;
+	u32 underscan_vborder = 0;
+	int found_connector = false;
 
 	DRM_DEBUG_KMS("%s\n", __FILE__);
+
+	list_for_each_entry(connector, &dev->mode_config.connector_list, head) {
+		if (connector->encoder && connector->encoder->crtc == crtc) {
+		        found_connector = true;
+			break;
+		}
+	}
+
+	if (found_connector)
+	        exynos_drm_connector_copy_underscan_properties(connector,
+		        &underscan, &underscan_hborder,
+		        &underscan_vborder);
+
+	if (underscan == UNDERSCAN_OFF)
+		underscan_hborder = underscan_vborder = 0;
+
+	printk(KERN_ERR "%s: underscan %d %ux%u\n", __func__, underscan, underscan_hborder,
+		        underscan_vborder);
 
 	/* when framebuffer changing is requested, crtc's dpms should be on */
 	if (exynos_crtc->dpms > DRM_MODE_DPMS_ON) {
@@ -160,7 +215,8 @@ static int exynos_drm_crtc_mode_set_base(struct drm_crtc *crtc, int x, int y,
 	crtc_h = crtc->fb->height - y;
 
 	ret = exynos_plane_mode_set(plane, crtc, crtc->fb, 0, 0, crtc_w, crtc_h,
-				    x, y, crtc_w, crtc_h);
+				    x, y, crtc_w, crtc_h, underscan_hborder,
+				    underscan_vborder);
 	if (ret)
 		return ret;
 

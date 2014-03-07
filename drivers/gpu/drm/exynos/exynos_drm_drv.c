@@ -95,6 +95,19 @@ static int exynos_drm_load(struct drm_device *dev, unsigned long flags)
 			goto err_release_iommu_mapping;
 	}
 
+	private->underscan_property = drm_property_create(dev, DRM_MODE_PROP_ENUM,
+            "underscan", 3);
+	drm_property_add_enum(private->underscan_property, 0, UNDERSCAN_AUTO,
+	        "auto");
+	drm_property_add_enum(private->underscan_property, 1, UNDERSCAN_OFF, "off");
+	drm_property_add_enum(private->underscan_property, 2, UNDERSCAN_ON, "on");
+
+	private->underscan_hborder_property =
+		drm_property_create_range(dev, 0, "underscan hborder", 0, 128);
+
+	private->underscan_vborder_property =
+		drm_property_create_range(dev, 0, "underscan vborder", 0, 128);
+
 	ret = drm_vblank_init(dev, MAX_CRTC);
 	if (ret)
 		goto err_release_iommu_mapping;

@@ -21,4 +21,7 @@ struct drm_encoder *exynos_drm_best_encoder(struct drm_connector *connector);
 
 void exynos_drm_display_power(struct drm_connector *connector, int mode);
 
+void exynos_drm_connector_copy_underscan_properties(
+        struct drm_connector *connector, enum exynos_underscan_type *underscan,
+        u32 *underscan_hborder, u32 *underscan_vborder);
 #endif

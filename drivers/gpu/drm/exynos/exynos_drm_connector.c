@@ -26,6 +26,10 @@ struct exynos_drm_connector {
 	uint32_t		encoder_id;
 	struct exynos_drm_manager *manager;
 	uint32_t		dpms;
+
+	enum exynos_underscan_type underscan;
+	u32 underscan_hborder;
+	u32 underscan_vborder;
 };
 
 /* convert exynos_video_timings to drm_display_mode */
@@ -306,11 +310,65 @@ static void exynos_drm_connector_destroy(struct drm_connector *connector)
 	kfree(exynos_connector);
 }
 
+static void exynos_drm_property_change_mode(struct drm_encoder *encoder)
+{
+	struct drm_crtc *crtc = encoder->crtc;
+
+	if (crtc && crtc->enabled) {
+		drm_crtc_helper_set_mode(crtc, &crtc->mode,
+					 crtc->x, crtc->y, crtc->fb);
+	}
+}
+
+static int
+exynos_drm_connector_set_property(struct drm_connector *connector,
+			       struct drm_property *property, uint64_t value)
+{
+	struct exynos_drm_private *private = connector->dev->dev_private;
+	struct exynos_drm_connector *exynos_connector =
+		to_exynos_connector(connector);
+	struct drm_encoder *encoder = exynos_drm_best_encoder(connector);
+
+	/* Underscan */
+	if (property == private->underscan_property) {
+		if (exynos_connector->underscan != value) {
+			exynos_connector->underscan = value;
+
+			exynos_drm_property_change_mode(encoder);
+		}
+
+		return 0;
+	}
+
+	if (property == private->underscan_hborder_property) {
+		if (exynos_connector->underscan_hborder != value) {
+			exynos_connector->underscan_hborder = value;
+
+			exynos_drm_property_change_mode(encoder);
+		}
+
+		return 0;
+	}
+
+	if (property == private->underscan_vborder_property) {
+		if (exynos_connector->underscan_vborder != value) {
+			exynos_connector->underscan_vborder = value;
+
+			exynos_drm_property_change_mode(encoder);
+		}
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static struct drm_connector_funcs exynos_connector_funcs = {
 	.dpms		= exynos_drm_connector_dpms,
 	.fill_modes	= exynos_drm_connector_fill_modes,
 	.detect		= exynos_drm_connector_detect,
 	.destroy	= exynos_drm_connector_destroy,
+	.set_property = exynos_drm_connector_set_property,
 };
 
 struct drm_connector *exynos_drm_connector_create(struct drm_device *dev,
@@ -318,6 +376,7 @@ struct drm_connector *exynos_drm_connector_create(struct drm_device *dev,
 {
 	struct exynos_drm_connector *exynos_connector;
 	struct exynos_drm_manager *manager = exynos_drm_get_manager(encoder);
+	struct exynos_drm_private *dev_priv = dev->dev_private;
 	struct drm_connector *connector;
 	int type;
 	int err;
@@ -350,6 +409,19 @@ struct drm_connector *exynos_drm_connector_create(struct drm_device *dev,
 	drm_connector_init(dev, connector, &exynos_connector_funcs, type);
 	drm_connector_helper_add(connector, &exynos_connector_helper_funcs);
 
+	/* Add overscan compensation options */
+	if (type == DRM_MODE_CONNECTOR_HDMIA) {
+		drm_object_attach_property(&connector->base,
+					      dev_priv->underscan_property,
+					      UNDERSCAN_OFF);
+		drm_object_attach_property(&connector->base,
+					      dev_priv->underscan_hborder_property,
+					      0);
+		drm_object_attach_property(&connector->base,
+					      dev_priv->underscan_vborder_property,
+					      0);
+	}
+
 	err = drm_sysfs_connector_add(connector);
 	if (err)
 		goto err_connector;
@@ -376,4 +448,16 @@ err_connector:
 	drm_connector_cleanup(connector);
 	kfree(exynos_connector);
 	return NULL;
+}
+
+void exynos_drm_connector_copy_underscan_properties(
+        struct drm_connector *connector, enum exynos_underscan_type *underscan,
+        u32 *underscan_hborder, u32 *underscan_vborder)
+{
+	struct exynos_drm_connector *exynos_connector =
+					to_exynos_connector(connector);
+
+	*underscan = exynos_connector->underscan;
+	*underscan_hborder = exynos_connector->underscan_hborder;
+	*underscan_vborder = exynos_connector->underscan_vborder;
 }

@@ -53,6 +53,12 @@ enum exynos_drm_output_type {
 	EXYNOS_DISPLAY_TYPE_VIDI,
 };
 
+enum exynos_underscan_type {
+	UNDERSCAN_OFF,
+	UNDERSCAN_ON,
+	UNDERSCAN_AUTO,
+};
+
 /*
  * Exynos drm overlay ops structure.
  *
@@ -132,6 +138,9 @@ struct exynos_drm_overlay {
 	bool local_path;
 	bool transparency;
 	bool activated;
+
+	u32 underscan_hborder;
+	u32 underscan_vborder;
 };
 
 /*
@@ -251,6 +260,10 @@ struct exynos_drm_private {
 	struct drm_crtc *crtc[MAX_CRTC];
 	struct drm_property *plane_zpos_property;
 	struct drm_property *crtc_mode_property;
+
+	struct drm_property *underscan_property;
+	struct drm_property *underscan_hborder_property;
+	struct drm_property *underscan_vborder_property;
 
 	unsigned long da_start;
 	unsigned long da_space_size;

@@ -61,6 +61,8 @@ struct hdmi_win_data {
 	unsigned int		scan_flags;
 	bool			enabled;
 	bool			resume;
+	u32			underscan_hborder;
+	u32			underscan_vborder;
 };
 
 struct mixer_resources {
@@ -535,6 +537,16 @@ static void mixer_graph_buffer(struct mixer_context *ctx, int win)
 	dst_x_offset = win_data->crtc_x;
 	dst_y_offset = win_data->crtc_y;
 
+	/* undo mode adjustment caused by underscanning */
+	win_data->crtc_width += win_data->underscan_hborder;
+	win_data->crtc_height += win_data->underscan_vborder;
+	win_data->mode_height += win_data->underscan_vborder;
+
+	printk(KERN_ERR "mixer_graph_buffer fb: %dx%d %dx%d crtc: %dx%d %dx%d mode height: %d\n",
+		win_data->fb_x, win_data->fb_y, win_data->fb_width, win_data->fb_height,
+		win_data->crtc_x, win_data->crtc_y, win_data->crtc_width, win_data->crtc_height,
+		win_data->mode_height);
+
 	/* converting dma address base and source offset */
 	dma_addr = win_data->dma_addr
 		+ (win_data->fb_x * win_data->bpp >> 3)
@@ -770,6 +782,9 @@ static void mixer_win_mode_set(void *ctx,
 	win_data->mode_height = overlay->mode_height;
 
 	win_data->scan_flags = overlay->scan_flag;
+
+	win_data->underscan_hborder = overlay->underscan_hborder;
+	win_data->underscan_vborder = overlay->underscan_vborder;
 }
 
 static void mixer_win_commit(void *ctx, int win)
