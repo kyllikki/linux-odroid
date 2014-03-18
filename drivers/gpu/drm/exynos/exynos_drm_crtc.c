@@ -124,6 +124,8 @@ exynos_drm_crtc_mode_set(struct drm_crtc *crtc, struct drm_display_mode *mode,
 	struct drm_plane *plane = exynos_crtc->plane;
 	unsigned int crtc_w;
 	unsigned int crtc_h;
+	unsigned int crtc_uh = 0;
+	unsigned int crtc_uv = 0;
 	int pipe = exynos_crtc->pipe;
 	int ret;
 
@@ -138,8 +140,14 @@ exynos_drm_crtc_mode_set(struct drm_crtc *crtc, struct drm_display_mode *mode,
 	crtc_w = crtc->fb->width - x;
 	crtc_h = crtc->fb->height - y;
 
-	ret = exynos_plane_mode_set(plane, crtc, crtc->fb, 0, 0, crtc_w, crtc_h,
-				    x, y, crtc_w, crtc_h);
+	if (exynos_crtc->underscan == CRTC_UNDERSCAN_CROP) {
+		crtc_uh = exynos_crtc->underscan_hborder;
+		crtc_uv = exynos_crtc->underscan_vborder;
+	}
+
+	ret = exynos_plane_mode_set(plane, crtc, crtc->fb,
+		crtc_uh, crtc_uv, crtc_w - (2 * crtc_uh), crtc_h - (2 *crtc_uv),
+		x, y, crtc_w, crtc_h);
 	if (ret)
 		return ret;
 
